@@ -1,0 +1,11 @@
+ZedGraph.dll
+ZedGraph.resources.dll
+Backup
+backup
+obj
+bin
+*.user
+*.suo
+*.cache
+_*
+DSOEco.pfx
