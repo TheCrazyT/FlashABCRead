@@ -178,7 +178,6 @@ namespace FlashABCRead
                 return s;
             }
         }
-        
         private fClass getC(string property, string type)
         {
             string[] steps = property.Split('.');
@@ -259,6 +258,69 @@ namespace FlashABCRead
                 classStream.Seek(pos, SeekOrigin.Begin);
                 return d;
             }
+        }
+
+        //momentan leider komplett falsch :(
+        public String getClassName()
+        {
+            uint[] steps=new uint[11];
+            long pos = classStream.Position;
+            try
+            {
+                lock (this)
+                {
+                    lock (this.classStream)
+                    {
+                        classStream.Seek(classPosition, SeekOrigin.Begin);
+
+                        //2 1 1 2 3 0 0 3 0 0 2
+                        steps[0] = 2;
+                        steps[1] = 1;
+                        steps[2] = 2;
+                        steps[3] = 1;
+                        steps[4] = 3;
+                        steps[5] = 4;
+                        steps[6] = 8;
+                        steps[7] = 2;
+                        BinaryReader br = new BinaryReader(classStream);
+                        for (int i = 0; i < 7; i++)
+                        {
+                            classStream.Seek(steps[i] * 4, SeekOrigin.Current);
+                            uint off = br.ReadUInt32();
+                            if (off == 0)
+                            {
+                                classStream.Seek(pos, SeekOrigin.Begin);
+                                return "";
+                            }
+                            classStream.Seek(off, SeekOrigin.Begin);
+                        }
+                        classStream.Seek(steps[7]*4, SeekOrigin.Current);
+                        uint off2 = br.ReadUInt32();
+                        uint reloff = br.ReadUInt32();
+                        int size = br.ReadInt32();
+                        if (((uint)size > 0x100)||(size==0))
+                        {
+                            classStream.Seek(pos, SeekOrigin.Begin);
+                            return "";
+                        }
+                        string s = "";
+                        byte[] mem = new byte[size];
+                        classStream.Seek(off2+reloff, SeekOrigin.Begin); 
+                        br.Read(mem, 0, size);
+                        s = Encoding.UTF8.GetString(mem);
+                        if (s == null) s = "";
+                        classStream.Seek(pos, SeekOrigin.Begin);
+                        return s;
+                    }
+                }
+            }
+            catch (EndOfStreamException e)
+            {
+                classStream.Seek(pos, SeekOrigin.Begin);
+                return "";
+            }
+            classStream.Seek(pos, SeekOrigin.Begin);
+            return "";
         }
         private int get(string property, string type)
         {
@@ -352,7 +414,8 @@ namespace FlashABCRead
                         if (p.type.Substring(0, 6) == "const_")
                         {
  
-                            if ((p.type != "uint") && (p.type != "int") && (p.type != "Boolean") && (p.type != "Number")) i++;
+//                            if ((p.type != "uint") && (p.type != "int") && (p.type != "Boolean") && (p.type != "Number")) i++;
+                            i++;
                             continue;
                         }
                     if ((p.type != "uint") && (p.type != "int") && (p.type != "Boolean") && (p.type != "Number"))
