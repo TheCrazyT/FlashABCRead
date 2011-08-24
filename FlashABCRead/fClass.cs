@@ -56,6 +56,17 @@ namespace FlashABCRead
                 }
             }
         }
+        public fClass gO(string property,uint index,string type2)
+        {
+            lock (this)
+            {
+                lock (this.classStream)
+                {
+                    classStream.Seek(classPosition, SeekOrigin.Begin);
+                    return getObject(property, name,index,type2);
+                }
+            }
+        }
         public double gDBL(string property)
         {
             lock (this)
@@ -123,7 +134,69 @@ namespace FlashABCRead
 
         }
 
+        private fClass getObject(string property, string type, uint index,string type2)
+        {
+            string[] steps = property.Split('.');
+            long pos = classStream.Position;
+            if (steps.Length == 1)
+            {
+                BinaryReader br = new BinaryReader(classStream);
+                classStream.Seek(Offset(type + "." + property), SeekOrigin.Current);
+                classStream.Seek(br.ReadInt32() & 0xFFFFFFF8, SeekOrigin.Begin);
+                classStream.Seek(0x10, SeekOrigin.Current);
+                uint list = (br.ReadUInt32() & 0xFFFFFFF8);
+                short cnt = br.ReadInt16();
+                classStream.Seek(list, SeekOrigin.Begin);
+                uint gotopos = 0;
+                for (int i = 0; i < cnt; i++)
+                {
+                    uint idx = br.ReadUInt32();
+                    if(idx==0){cnt++;continue;}
+                    uint p   = br.ReadUInt32();
+                    if ((idx - 6) / 8 == index)
+                    {
+                        gotopos = p & 0xFFFFFFF8;
+                        break;
+                    }
+                }
+                fClass c = null;
+                if (gotopos != 0)
+                {
+                    classStream.Seek(gotopos, SeekOrigin.Begin);
+                    c = new fClass(classStream, type2);
+                }
+                
+                classStream.Seek(pos, SeekOrigin.Begin);
+                return c;
+            }
+            else
+            {
+                BinaryReader br = new BinaryReader(classStream);
+                classStream.Seek(Offset(type + "." + steps[0]), SeekOrigin.Current);
+                int i = br.ReadInt32();
+                classStream.Seek(i, SeekOrigin.Begin);
+                property = "";
+                int x;
+                for (x = 1; x < steps.Length - 1; x++)
+                    property += steps[x] + ".";
+                property += steps[x];
 
+                string t = this.getType(steps[0]);
+                string main_name = this.name;
+                this.name = t;
+                fClass c = null;
+                try
+                {
+                    c = getObject(property, t,index,type2);
+                }
+                finally
+                {
+                    this.name = main_name;
+                    classStream.Seek(pos, SeekOrigin.Begin);
+                }
+                return c;
+            }
+        }
         private string getSTR(string property, string type)
         {
             string[] steps = property.Split('.');
@@ -368,6 +441,18 @@ namespace FlashABCRead
             this.name = classname;
             this.classPosition = ms.Position;
         }
+        public static string GetClassName(int index)
+        {
+            return FoundClasses[index].name;
+        }
+        public static void AddStaticPropertiesToClass(int index,List<cProp> pr)
+        {
+            foreach (cProp p in pr)
+            {
+                propertyTypes.Add("static "+FoundClasses[index].name + "." + p.name, p.type);
+                FoundClasses[index].properties.Add(p);
+            }
+        }
         public static void AddClass(fClass c)
         {
             foreach (cProp p in c.properties)
@@ -415,6 +500,7 @@ namespace FlashABCRead
                         {
  
 //                            if ((p.type != "uint") && (p.type != "int") && (p.type != "Boolean") && (p.type != "Number")) i++;
+                            offsets.Add(c.name + "." + p.name, i * 4);
                             i++;
                             continue;
                         }

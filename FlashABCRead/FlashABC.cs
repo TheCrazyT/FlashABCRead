@@ -361,6 +361,7 @@ namespace FlashABCRead
             Debug.Print("IIS {0:x} {1:x}\n", br.BaseStream.Position, len + start);
             instanceinfoStart=br.BaseStream.Position;
             cnt = getU30(br.BaseStream);
+            bool[] classfound=new bool[cnt];
             for (ulong n = 0; n < cnt; n++)
             {
                 string instanceName = getLabel(getU32(br.BaseStream));
@@ -386,20 +387,38 @@ namespace FlashABCRead
                     getTraits(br,out prop);
                     instance.properties = prop;
                     fClass.AddClass(instance);
-                    if (fClass.Count == classes.Count) return;
+                    //if (fClass.Count == classes.Count) return;
+                    classfound[n] = true;
                 }
             }
 
-            /*
+            
             Debug.Print("CIS {0:x} {1:x}\n", br.BaseStream.Position, len + start);
             classinfoStart = br.BaseStream.Position;
+            int cpos = 0;
             for (ulong n = 0; n < cnt; n++)
             {
-                skipU32(br.BaseStream);
-                skipTraits(br);
+                if (!classfound[n])
+                {
+                    skipU32(br.BaseStream);
+                    skipTraits(br);
+                }
+                else
+                {
+                    List<cProp> prop = new List<cProp>();
+                    skipU32(br.BaseStream);
+                    Debug.Print("Additional info for Instance:{0} found!", fClass.GetClassName(cpos));
+                    getTraits(br, out prop);
+                    fClass instance = new fClass();
+                    instance.name = "static " + fClass.GetClassName(cpos);
+                    instance.properties = prop;
+                    fClass.AddClass(instance);
+                    //fClass.AddStaticPropertiesToClass(cpos, prop);
+                    cpos++;
+                }
             }
 
-            Debug.Print("SIS {0:x} {1:x}\n", br.BaseStream.Position, len + start);
+            /*Debug.Print("SIS {0:x} {1:x}\n", br.BaseStream.Position, len + start);
             scriptinfoStart = br.BaseStream.Position;
             cnt = getU30(br.BaseStream);
             for (ulong n = 0; n < cnt; n++)
