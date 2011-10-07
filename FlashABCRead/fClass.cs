@@ -115,12 +115,17 @@ namespace FlashABCRead
 
             classStream.Seek(0x10, SeekOrigin.Current);
 
-            uint cnt = br.ReadUInt32();
-            if (cnt > 0x10000000) Debugger.Break();
+            /* 07.10.11
+             * uint cnt = br.ReadUInt32();
+            if (cnt > 0x10000000) Debugger.Break();*/
             br.ReadUInt32();
             br.ReadUInt32();
             uint offset = br.ReadUInt32();
 
+            /* 07.10.11 */
+            classStream.Seek(offset+4, SeekOrigin.Begin);
+            uint cnt = br.ReadUInt32();
+            offset += 8;
 
             for (int x = 0; x < cnt; x++)
             {
@@ -142,11 +147,14 @@ namespace FlashABCRead
             {
                 BinaryReader br = new BinaryReader(classStream);
                 classStream.Seek(Offset(type + "." + property), SeekOrigin.Current);
-                classStream.Seek(br.ReadInt32() & 0xFFFFFFF8, SeekOrigin.Begin);
+                uint off = br.ReadUInt32();
+                classStream.Seek(off & 0xFFFFFFF8, SeekOrigin.Begin);
                 classStream.Seek(0x10, SeekOrigin.Current);
+
                 uint list = (br.ReadUInt32() & 0xFFFFFFF8);
                 short cnt = br.ReadInt16();
-                classStream.Seek(list, SeekOrigin.Begin);
+                //07.10.2011 ... + 0xC
+                classStream.Seek(list+0xC, SeekOrigin.Begin);
                 uint gotopos = 0;
                 for (int i = 0; i < cnt; i++)
                 {
