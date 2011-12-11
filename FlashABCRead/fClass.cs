@@ -220,6 +220,7 @@ namespace FlashABCRead
                 uint reloff = br.ReadUInt32();
                 off = br.ReadUInt32();
                 int size = br.ReadInt32();
+                if (size > 1028) throw new Exception("String too big!");
                 if(off!=0)
                 {
                     byte[] mem = new byte[size];
@@ -475,18 +476,35 @@ namespace FlashABCRead
                 //EventDispatcher -> i+=4?
                 switch (c.superclass)
                 {
-                    case "cGO":
+                    /*case "cGO":
                         Debug.Print("{0} has superclass {1}!", c.name, c.superclass);
                         i += 12;
-                        break;
+                        break;*/
                     case "EventDispatcher":
                         Debug.Print("{0} has superclass {1}!",c.name,c.superclass);
                         i += 4;
                         break;
                     case "Object":
                         break;
+                    case null:
+                        break;
                     default:
-                        Debug.Print("unhandled {0} has superclass {1}!",c.name,c.superclass);
+                        i += 4;
+                        bool found = false;
+                        foreach (fClass supc in FoundClasses)
+                        {
+                            if (supc.name == c.superclass)
+                            {
+                                int off = 0;
+                                foreach (cProp p in supc.properties)
+                                    i++;
+
+                                Debug.Print("Superclass for {0} found.",c.name);
+                                found = true;
+                                break;
+                            }
+                        }
+                        if(!found)Debug.Print("unhandled {0} has superclass {1}!",c.name,c.superclass);
                         break;
                 }
 
